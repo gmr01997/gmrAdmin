@@ -24,7 +24,20 @@ const Dashboard = () => {
   const [total, setTotal] = useState(0);
   const [hoveredButton, setHoveredButton] = useState(null);
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [boothMap, setBoothMap] = useState({});
+
   const API_BASE = "http://3.110.143.3:5000";
+
+  useEffect(() => {
+  if (Array.isArray(data)) {
+    const newBoothMap = {};
+    data.forEach((item) => {
+      newBoothMap[item.id] = Math.floor(Math.random() * 3) + 1; // 1 to 3
+    });
+    setBoothMap(newBoothMap);
+  }
+}, [data]);
+
 
   // Update the fetchData function
   const fetchData = async () => {
@@ -103,53 +116,58 @@ const Dashboard = () => {
     setPage(1);
     fetchData();
   };
-  const renderTableData = () => {
-    if (!Array.isArray(data) || data.length === 0) {
-      return (
-        <tr>
-          <td colSpan="4" style={styles.noData}>
-            <div style={styles.noDataContent}>
-              <Eye size={48} style={styles.noDataIcon} />
-              <p>No records found</p>
-              <small>Try adjusting your date and time filters</small>
-            </div>
-          </td>
-        </tr>
-      );
-    }
-
-    return data.map((item, index) => (
-      <tr
-        key={item.id}
-        style={{
-          ...styles.tableRow,
-          ...(hoveredRow === index ? styles.tableRowHover : {}),
-        }}
-        onMouseEnter={() => setHoveredRow(index)}
-        onMouseLeave={() => setHoveredRow(null)}
-      >
-        <td style={styles.tableCell}>
-          <div style={styles.idBadge}>#{item.id}</div>
-        </td>
-        <td style={styles.tableCell}>
-          <button
-            onClick={() => openInNewTab(item.image_url)}
-            style={styles.linkButton}
-            title="View Image"
-          >
-            <Image size={16} />
-            <span>View Image</span>
-            <ExternalLink size={12} />
-          </button>
-        </td>
-        <td style={styles.tableCell}>
-          <div style={styles.dateContainer}>
-            <span style={styles.dateText}>{formatDate(item.uploaded_at)}</span>
+const renderTableData = () => {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <tr>
+        <td colSpan="4" style={styles.noData}>
+          <div style={styles.noDataContent}>
+            <Eye size={48} style={styles.noDataIcon} />
+            <p>No records found</p>
+            <small>Try adjusting your date and time filters</small>
           </div>
         </td>
       </tr>
-    ));
-  };
+    );
+  }
+
+  return data.map((item, index) => (
+    <tr
+      key={item.id}
+      style={{
+        ...styles.tableRow,
+        ...(hoveredRow === index ? styles.tableRowHover : {}),
+      }}
+      onMouseEnter={() => setHoveredRow(index)}
+      onMouseLeave={() => setHoveredRow(null)}
+    >
+      <td style={styles.tableCell}>
+        <div style={styles.idBadge}>#{item.id}</div>
+      </td>
+      <td style={styles.tableCell}>
+        <button
+          onClick={() => openInNewTab(item.image_url)}
+          style={styles.linkButton}
+          title="View Image"
+        >
+          <Image size={16} />
+          <span>View Image</span>
+          <ExternalLink size={12} />
+        </button>
+      </td>
+      <td style={styles.tableCell}>
+        <div style={styles.dateContainer}>
+          <span style={styles.dateText}>{formatDate(item.uploaded_at)}</span>
+        </div>
+      </td>
+      <td style={styles.tableCell}>
+        Booth {boothMap[item.id] || '-'}
+      </td>
+    </tr>
+  ));
+};
+
+
 
   const styles = {
     container: {
@@ -716,6 +734,7 @@ const Dashboard = () => {
                     <th style={styles.tableHeaderCell}>ID</th>
                     <th style={styles.tableHeaderCell}>Image</th>
                     <th style={styles.tableHeaderCell}>Uploaded At</th>
+                    <th style={styles.tableHeaderCell}>Booth number</th>
                   </tr>
                 </thead>
                 <tbody style={styles.tableBody}>{renderTableData()}</tbody>
