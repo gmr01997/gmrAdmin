@@ -8,7 +8,9 @@ import {
   QrCode,
   Eye,
   Clock,
+  Download, FileText, File
 } from "lucide-react";
+
 
 const Dashboard = () => {
   const [data, setData] = useState([]);
@@ -25,19 +27,22 @@ const Dashboard = () => {
   const [hoveredButton, setHoveredButton] = useState(null);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [boothMap, setBoothMap] = useState({});
+  const [selectedBooth, setSelectedBooth] = useState("");
+  const [filteredData, setFilteredData] = useState([]);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('csv');
 
   const API_BASE = "http://3.110.143.3:5000";
 
   useEffect(() => {
-  if (Array.isArray(data)) {
-    const newBoothMap = {};
-    data.forEach((item) => {
-      newBoothMap[item.id] = Math.floor(Math.random() * 3) + 1; // 1 to 3
-    });
-    setBoothMap(newBoothMap);
-  }
-}, [data]);
-
+    if (Array.isArray(data)) {
+      const newBoothMap = {};
+      data.forEach((item) => {
+        newBoothMap[item.id] = Math.floor(Math.random() * 3) + 1; // 1 to 3
+      });
+      setBoothMap(newBoothMap);
+    }
+  }, [data]);
 
   // Update the fetchData function
   const fetchData = async () => {
@@ -46,9 +51,14 @@ const Dashboard = () => {
     try {
       let url = `${API_BASE}/records?page=${page}&per_page=10`;
 
-      // Only add date/time filters if they are set
+      // Add date/time filters if they are set
       if (startDate && endDate) {
         url += `&start_date=${startDate}T${startTime}:00&end_date=${endDate}T${endTime}:59`;
+      }
+
+      // Add booth filter if selected
+      if (selectedBooth) {
+        url += `&booth=${selectedBooth}`;
       }
 
       const response = await fetch(url, {
@@ -73,7 +83,6 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
   // Update the useEffect to only trigger on page change initially
   useEffect(() => {
     fetchData();
@@ -113,68 +122,105 @@ const Dashboard = () => {
     setEndDate("");
     setStartTime("00:00");
     setEndTime("23:59");
+    setSelectedBooth("");
     setPage(1);
     fetchData();
   };
-const renderTableData = () => {
-  if (!Array.isArray(data) || data.length === 0) {
-    return (
-      <tr>
-        <td colSpan="4" style={styles.noData}>
-          <div style={styles.noDataContent}>
-            <Eye size={48} style={styles.noDataIcon} />
-            <p>No records found</p>
-            <small>Try adjusting your date and time filters</small>
+
+  const applyBoothFilter = () => {
+    if (!selectedBooth) {
+      setFilteredData(data);
+    } else {
+      const filtered = data.filter((item) => {
+        const boothNumber = boothMap[item.id];
+        return boothNumber && boothNumber.toString() === selectedBooth;
+      });
+      setFilteredData(filtered);
+    }
+  };
+
+  useEffect(() => {
+    applyBoothFilter();
+  }, [data, selectedBooth, boothMap]);
+
+  const renderTableData = () => {
+    const dataToRender =
+      filteredData.length > 0 || selectedBooth ? filteredData : data;
+
+    if (!Array.isArray(dataToRender) || dataToRender.length === 0) {
+      return (
+        <tr>
+          <td colSpan="4" style={styles.noData}>
+            <div style={styles.noDataContent}>
+              <Eye size={48} style={styles.noDataIcon} />
+              <p>No records found</p>
+              <small>Try adjusting your filters</small>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    return dataToRender.map((item, index) => (
+      <tr
+        key={item.id}
+        style={{
+          ...styles.tableRow,
+          ...(hoveredRow === index ? styles.tableRowHover : {}),
+        }}
+        onMouseEnter={() => setHoveredRow(index)}
+        onMouseLeave={() => setHoveredRow(null)}
+      >
+        <td style={styles.tableCell}>
+          <div style={styles.idBadge}>#{item.id}</div>
+        </td>
+        <td style={styles.tableCell}>
+          <button
+            onClick={() => openInNewTab(item.image_url)}
+            style={styles.linkButton}
+            title="View Image"
+          >
+            <Image size={16} />
+            <span>View Image</span>
+            <ExternalLink size={12} />
+          </button>
+        </td>
+        <td style={styles.tableCell}>
+          <div style={styles.dateContainer}>
+            <span style={styles.dateText}>{formatDate(item.uploaded_at)}</span>
           </div>
         </td>
+        <td style={styles.tableCell}>Booth {boothMap[item.id] || "-"}</td>
       </tr>
-    );
-  }
-
-  return data.map((item, index) => (
-    <tr
-      key={item.id}
-      style={{
-        ...styles.tableRow,
-        ...(hoveredRow === index ? styles.tableRowHover : {}),
-      }}
-      onMouseEnter={() => setHoveredRow(index)}
-      onMouseLeave={() => setHoveredRow(null)}
-    >
-      <td style={styles.tableCell}>
-        <div style={styles.idBadge}>#{item.id}</div>
-      </td>
-      <td style={styles.tableCell}>
-        <button
-          onClick={() => openInNewTab(item.image_url)}
-          style={styles.linkButton}
-          title="View Image"
-        >
-          <Image size={16} />
-          <span>View Image</span>
-          <ExternalLink size={12} />
-        </button>
-      </td>
-      <td style={styles.tableCell}>
-        <div style={styles.dateContainer}>
-          <span style={styles.dateText}>{formatDate(item.uploaded_at)}</span>
-        </div>
-      </td>
-      <td style={styles.tableCell}>
-        Booth {boothMap[item.id] || '-'}
-      </td>
-    </tr>
-  ));
-};
-
-
+    ));
+  };
 
   const styles = {
     container: {
       display: "flex",
-      height: "100vh",
+      // height: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    },
+
+    selectInput: {
+      width: "100%",
+      padding: "12px 16px",
+      border: "1px solid rgba(255, 255, 255, 0.2)",
+      borderRadius: "12px",
+      fontSize: "14px",
+      boxSizing: "border-box",
+      outline: "none",
+      background: "rgba(255, 255, 255, 0.1)",
+      color: "#ffffff",
+      backdropFilter: "blur(10px)",
+      transition: "all 0.3s ease",
+      // Fix for dropdown options
+      "& option": {
+        background: "#2d3748",
+        color: "#ffffff",
+        padding: "8px",
+      },
     },
     sidebar: {
       position: "fixed",
@@ -194,7 +240,7 @@ const renderTableData = () => {
       position: "static",
       transform: "none",
       width: "280px",
-      height: "100vh",
+      // height: "100vh",
       background: "linear-gradient(180deg, #2d3748 0%, #1a202c 100%)",
       backdropFilter: "blur(20px)",
       boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
@@ -538,8 +584,14 @@ const renderTableData = () => {
       transition: "all 0.2s ease",
       boxShadow: "0 4px 8px rgba(252, 129, 129, 0.3)",
     },
+    
   };
-
+const spinKeyframes = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
   const getCurrentDateTime = () => {
     const now = new Date();
     const currentDate = now.toISOString().split("T")[0];
@@ -547,6 +599,129 @@ const renderTableData = () => {
     return { currentDate, currentTime };
   };
 
+  const fetchAllFilteredData = async () => {
+  try {
+    let url = `${API_BASE}/records?per_page=10000`; // Large number to get all records
+    
+    // Add date/time filters if they are set
+    if (startDate && endDate) {
+      url += `&start_date=${startDate}T${startTime}:00&end_date=${endDate}T${endTime}:59`;
+    }
+    
+    // Add booth filter if selected
+    if (selectedBooth) {
+      url += `&booth=${selectedBooth}`;
+    }
+    
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    return result.records || result.data || result || [];
+  } catch (err) {
+    console.error("Error fetching all data:", err);
+    throw err;
+  }
+};
+
+// Add this function to generate CSV
+const generateCSV = (data) => {
+  const headers = ['ID', 'Image URL', 'Uploaded At', 'Booth Number'];
+  const csvContent = [
+    headers.join(','),
+    ...data.map(item => [
+      item.id,
+      `"${item.image_url}"`,
+      `"${formatDate(item.uploaded_at)}"`,
+      `Booth ${boothMap[item.id] || '-'}`
+    ].join(','))
+  ].join('\n');
+  
+  return csvContent;
+};
+
+// Add this function to generate PDF content
+const generatePDF = (data) => {
+  const content = `
+    Records Report
+    Generated on: ${new Date().toLocaleString()}
+    
+    Filters Applied:
+    ${startDate && endDate ? `Date Range: ${startDate} ${startTime} to ${endDate} ${endTime}` : 'Date Range: All dates'}
+    ${selectedBooth ? `Booth: ${selectedBooth}` : 'Booth: All booths'}
+    
+    Total Records: ${data.length}
+    
+    ====================================
+    
+    ${data.map((item, index) => `
+    Record ${index + 1}:
+    ID: ${item.id}
+    Image URL: ${item.image_url}
+    Uploaded At: ${formatDate(item.uploaded_at)}
+    Booth Number: ${boothMap[item.id] || '-'}
+    ------------------------------------
+    `).join('')}
+  `;
+  
+  return content;
+};
+
+// Add this function to handle download
+const handleDownload = async () => {
+  setDownloading(true);
+  try {
+    const allData = await fetchAllFilteredData();
+    
+    if (allData.length === 0) {
+      alert('No data available to download with current filters');
+      return;
+    }
+    
+    let content, filename, mimeType;
+    
+    if (downloadFormat === 'csv') {
+      content = generateCSV(allData);
+      filename = `records_${startDate || 'all'}_to_${endDate || 'all'}_booth_${selectedBooth || 'all'}.csv`;
+      mimeType = 'text/csv';
+    } else if (downloadFormat === 'pdf') {
+      content = generatePDF(allData);
+      filename = `records_${startDate || 'all'}_to_${endDate || 'all'}_booth_${selectedBooth || 'all'}.txt`;
+      mimeType = 'text/plain';
+    }
+    
+    // Create and trigger download
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    alert(`${allData.length} records downloaded successfully!`);
+  } catch (error) {
+    alert('Error downloading data: ' + error.message);
+  } finally {
+    setDownloading(false);
+  }
+};
+
+useEffect(() => {
+  const style = document.createElement('style');
+  style.textContent = spinKeyframes;
+  document.head.appendChild(style);
+  return () => document.head.removeChild(style);
+}, []);
   return (
     <div style={styles.container}>
       {/* Sidebar */}
@@ -629,6 +804,63 @@ const renderTableData = () => {
             </div>
           </div>
 
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Booth Number</label>
+            <select
+              value={selectedBooth}
+              onChange={(e) => setSelectedBooth(e.target.value)}
+              style={styles.selectInput}
+            >
+              <option style={{color:"black"}} value="">All Booths</option>
+              <option style={{color:"black"}} value="1">Booth 1</option>
+              <option style={{color:"black"}} value="2">Booth 2</option>
+              <option style={{color:"black"}} value="3">Booth 3</option>
+            </select>
+          </div>
+
+          <div style={styles.inputGroup}>
+  <label style={styles.label}>Download Format</label>
+  <select
+    value={downloadFormat}
+    onChange={(e) => setDownloadFormat(e.target.value)}
+    style={styles.selectInput}
+  >
+    <option style={{color:"black"}} value="csv">CSV Format</option>
+    <option style={{color:"black"}} value="pdf">Text Format</option>
+  </select>
+</div>
+
+<button
+  onClick={handleDownload}
+  disabled={downloading}
+  style={{
+    ...styles.filterButton,
+    background: downloading 
+      ? "linear-gradient(135deg, #a0aec0 0%, #718096 100%)"
+      : "linear-gradient(135deg, #38a169 0%, #2f855a 100%)",
+    marginBottom: "16px",
+  }}
+>
+  {downloading ? (
+    <>
+      <div style={{
+        width: "16px",
+        height: "16px",
+        border: "2px solid #ffffff",
+        borderTop: "2px solid transparent",
+        borderRadius: "50%",
+        animation: "spin 1s linear infinite"
+      }} />
+      Downloading...
+    </>
+  ) : (
+    <>
+      <Download size={16} />
+      Download {downloadFormat.toUpperCase()}
+    </>
+  )}
+</button>
+
           <button
             onClick={handleDateFilter}
             style={{
@@ -656,6 +888,21 @@ const renderTableData = () => {
             <div style={styles.statItem}>
               <span>Total Records</span>
               <span>{total}</span>
+            </div>
+
+            <div style={styles.statItem}>
+              <span>Selected Booth</span>
+              <span>{selectedBooth || "All"}</span>
+            </div>
+            <div style={styles.statItem}>
+              <span>Filtered Records</span>
+              <span>
+                {selectedBooth
+                  ? filteredData.length
+                  : Array.isArray(data)
+                  ? data.length
+                  : 0}
+              </span>
             </div>
 
             <div style={styles.paginationButtons}>
