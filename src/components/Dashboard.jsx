@@ -32,13 +32,13 @@ const Dashboard = () => {
   const [downloading, setDownloading] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState('csv');
 
-  const API_BASE = "http://3.110.143.3:5000";
+  const API_BASE = "http://72.60.103.198:5000";
 
   useEffect(() => {
     if (Array.isArray(data)) {
       const newBoothMap = {};
       data.forEach((item) => {
-        newBoothMap[item.id] = Math.floor(Math.random() * 3) + 1; // 1 to 3
+        newBoothMap[item.id] = Math.floor(Math.random() * 4) + 1; // 1 to 3
       });
       setBoothMap(newBoothMap);
     }
@@ -815,6 +815,12 @@ useEffect(() => {
               <option style={{color:"black"}} value="1">Booth 1</option>
               <option style={{color:"black"}} value="2">Booth 2</option>
               <option style={{color:"black"}} value="3">Booth 3</option>
+              <option style={{color:"black"}} value="3">Booth 4</option>
+              <option style={{color:"black"}} value="3">Booth 5</option>
+              <option style={{color:"black"}} value="3">Booth 6</option>
+
+
+
             </select>
           </div>
 
