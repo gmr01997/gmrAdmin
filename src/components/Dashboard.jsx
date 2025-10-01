@@ -816,8 +816,7 @@ useEffect(() => {
               <option style={{color:"black"}} value="2">Booth 2</option>
               <option style={{color:"black"}} value="3">Booth 3</option>
               <option style={{color:"black"}} value="3">Booth 4</option>
-              <option style={{color:"black"}} value="3">Booth 5</option>
-              <option style={{color:"black"}} value="3">Booth 6</option>
+             
 
 
 
